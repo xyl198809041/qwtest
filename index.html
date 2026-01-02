@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI几何画板</title>
+    <script src="https://www.geogebra.org/apps/deployggb.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        #prompt-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        #submit-btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #submit-btn:hover {
+            background-color: #45a049;
+        }
+        #submit-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .ggb-container {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .code-section {
+            margin-top: 20px;
+        }
+        #generated-code {
+            width: 100%;
+            min-height: 150px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .status.loading {
+            background-color: #fff3cd;
+            color: #856404;
+            display: block;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI几何画板</h1>
+            <p>输入几何描述，AI将生成相应的几何图形</p>
+        </div>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <input type="text" id="prompt-input" placeholder="例如：绘制一个半径为3的圆，圆心在原点">
+                <button id="submit-btn">生成图形</button>
+            </div>
+            <div id="status" class="status"></div>
+        </div>
+        
+        <div id="ggb-applet">
+            <div id="ggb-container" class="ggb-container"></div>
+        </div>
+        
+        <div class="code-section">
+            <h3>生成的GeoGebra代码：</h3>
+            <textarea id="generated-code" readonly></textarea>
+        </div>
+    </div>
+
+    <script src="api-integration.js"></script>
+    <script>
+        // 初始化GeoGebra应用
+        let geoGebraApp;
+        
+        // 等待页面加载完成后初始化
+        window.addEventListener('load', function() {
+            // 如果需要使用真实的AI API，取消下面的注释并配置API密钥
+            /*
+            const apiConfig = {
+                apiKey: 'your-openai-api-key-here', // 替换为你的API密钥
+                apiUrl: 'https://api.openai.com/v1/chat/completions',
+                model: 'gpt-3.5-turbo'
+            };
+            
+            geoGebraApp = new EnhancedGeoGebraApp('ggb-container', apiConfig);
+            */
+            
+            // 使用模拟功能演示（不需要API密钥）
+            geoGebraApp = new (class extends EnhancedGeoGebraApp {
+                constructor(containerId) {
+                    super(containerId, null); // 不使用API配置
+                    this.init();
+                }
+                
+                // 重写generateAndExecute方法使用模拟功能
+                async generateAndExecute(prompt) {
+                    this.showStatus('正在生成几何图形...', 'loading');
+                    
+                    try {
+                        // 使用模拟AI生成代码
+                        const code = this.simulateCodeGeneration(prompt);
+                        
+                        // 显示生成的代码
+                        document.getElementById('generated-code').value = code;
+
+                        // 清除之前的图形
+                        this.clearAll();
+
+                        // 执行生成的命令
+                        this.executeCommand(code);
+                        
+                        this.showStatus('图形生成成功！', 'success');
+                        return code;
+                    } catch (error) {
+                        this.showStatus(`生成图形时出错: ${error.message}`, 'error');
+                        throw error;
+                    }
+                }
+                
+                // 模拟代码生成函数
+                simulateCodeGeneration(prompt) {
+                    // 根据输入的提示生成相应的GeoGebra命令
+                    prompt = prompt.toLowerCase();
+                    
+                    if (prompt.includes('圆') && prompt.includes('原点')) {
+                        if (prompt.includes('半径') && prompt.match(/\d+/)) {
+                            const radius = prompt.match(/\d+/)[0];
+                            return `Circle((0, 0), ${radius})`;
+                        }
+                        return 'Circle((0, 0), 3)'; // 默认半径为3
+                    } else if (prompt.includes('三角形')) {
+                        return 'Polygon((0, 0), (4, 0), (2, 3))';
+                    } else if (prompt.includes('正方形') || prompt.includes('矩形')) {
+                        return 'Polygon((0, 0), (4, 0), (4, 4), (0, 4))';
+                    } else if (prompt.includes('椭圆')) {
+                        return 'Ellipse((0, 0), (3, 0), (0, 2))';
+                    } else if (prompt.includes('抛物线')) {
+                        return 'Parabola((0, 0), Line((0, -1), (1, -1)))';
+                    } else if (prompt.includes('双曲线')) {
+                        return 'Hyperbola((0, 0), 2, 1)';
+                    } else if (prompt.includes('直线')) {
+                        return 'Line((0, 0), (5, 5))';
+                    } else if (prompt.includes('线段')) {
+                        return 'Segment((0, 0), (5, 5))';
+                    } else if (prompt.includes('射线')) {
+                        return 'Ray((0, 0), (5, 5))';
+                    } else if (prompt.includes('点')) {
+                        const matches = prompt.match(/(-?\d+\.?\d*)[,，\s]+(-?\d+\.?\d*)/);
+                        if (matches && matches.length >= 3) {
+                            return `Point((${matches[1]}, ${matches[2]}))`;
+                        }
+                        return 'Point((2, 3))'; // 默认点
+                    } else if (prompt.includes('函数') || prompt.includes('y=')) {
+                        if (prompt.includes('x^2') || prompt.includes('x²')) {
+                            return 'f(x) = x^2';
+                        } else if (prompt.includes('sin')) {
+                            return 'f(x) = sin(x)';
+                        } else {
+                            return 'f(x) = x';
+                        }
+                    } else {
+                        // 默认生成一个圆
+                        return 'Circle((0, 0), 3)';
+                    }
+                }
+            })('ggb-container');
+            
+            // 监听窗口大小变化，调整画板大小
+            window.addEventListener('resize', function() {
+                if(geoGebraApp) {
+                    geoGebraApp.resize();
+                }
+            });
+        });
+        
+        // 提交按钮事件处理
+        document.getElementById('submit-btn').addEventListener('click', function() {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            if (!prompt) {
+                if(geoGebraApp) {
+                    geoGebraApp.showStatus('请输入几何描述', 'error');
+                } else {
+                    showStatus('请输入几何描述', 'error');
+                }
+                return;
+            }
+            
+            this.disabled = true;
+            
+            if(geoGebraApp) {
+                geoGebraApp.generateAndExecute(prompt).catch(error => {
+                    console.error('执行失败:', error);
+                }).finally(() => {
+                    this.disabled = false;
+                });
+            } else {
+                // 兼容旧代码
+                showStatus('几何画板未正确初始化', 'error');
+                this.disabled = false;
+            }
+        });
+        
+        // 回车键提交
+        document.getElementById('prompt-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('submit-btn').click();
+            }
+        });
+        
+        // 为了兼容旧代码，保留这个函数
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            if (statusDiv) {
+                statusDiv.textContent = message;
+                statusDiv.className = 'status ' + type;
+            }
+        }
+    </script>
+</body>
+</html>
